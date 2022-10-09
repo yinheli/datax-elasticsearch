@@ -31,7 +31,7 @@ import java.util.*;
  * @author kesc mail:492167585@qq.com
  * @date 2020-04-14 10:32
  */
-@SuppressWarnings(value = {"unchecked"})
+@SuppressWarnings(value = { "unchecked" })
 public class EsReader extends Reader {
 
     public static class Job extends Reader.Job {
@@ -133,15 +133,17 @@ public class EsReader extends Reader {
             this.scroll = Key.getScroll(conf);
             this.table = Key.getTable(conf);
             if (table == null || table.getColumn() == null || table.getColumn().isEmpty()) {
-                throw DataXException.asDataXException(ESReaderErrorCode.COLUMN_CANT_BE_EMPTY, "请检查job的elasticsearchreader插件下parameter是否配置了table参数");
+                throw DataXException.asDataXException(ESReaderErrorCode.COLUMN_CANT_BE_EMPTY,
+                        "请检查job的elasticsearchreader插件下parameter是否配置了table参数");
             }
         }
 
         @Override
         public void startRead(RecordSender recordSender) {
             PerfTrace.getInstance().addTaskDetails(super.getTaskId(), index);
-            //search
-            PerfRecord queryPerfRecord = new PerfRecord(super.getTaskGroupId(), super.getTaskId(), PerfRecord.PHASE.SQL_QUERY);
+            // search
+            PerfRecord queryPerfRecord = new PerfRecord(super.getTaskGroupId(), super.getTaskId(),
+                    PerfRecord.PHASE.SQL_QUERY);
             queryPerfRecord.start();
             SearchResult searchResult;
             try {
@@ -150,15 +152,17 @@ public class EsReader extends Reader {
                 throw DataXException.asDataXException(ESReaderErrorCode.ES_SEARCH_ERROR, e);
             }
             if (!searchResult.isSucceeded()) {
-                throw DataXException.asDataXException(ESReaderErrorCode.ES_SEARCH_ERROR, searchResult.getResponseCode() + ":" + searchResult.getErrorMessage());
+                throw DataXException.asDataXException(ESReaderErrorCode.ES_SEARCH_ERROR,
+                        searchResult.getResponseCode() + ":" + searchResult.getErrorMessage());
             }
             queryPerfRecord.end();
-            //transport records
-            PerfRecord allResultPerfRecord = new PerfRecord(super.getTaskGroupId(), super.getTaskId(), PerfRecord.PHASE.RESULT_NEXT_ALL);
+            // transport records
+            PerfRecord allResultPerfRecord = new PerfRecord(super.getTaskGroupId(), super.getTaskId(),
+                    PerfRecord.PHASE.RESULT_NEXT_ALL);
             allResultPerfRecord.start();
             this.transportRecords(recordSender, searchResult);
             allResultPerfRecord.end();
-            //do scroll
+            // do scroll
             JsonElement scrollIdElement = searchResult.getJsonObject().get("_scroll_id");
             if (scrollIdElement == null) {
                 return;
@@ -169,13 +173,16 @@ public class EsReader extends Reader {
                 boolean hasElement = true;
                 while (hasElement) {
                     queryPerfRecord.start();
-                    JestResult scroll = esClient.scroll(scrollId, this.scroll);
+                    JestResult sr = esClient.scroll(scrollId, this.scroll);
+                    // log.info("sr.getJsonString() = :{}", sr.getJsonString());
                     queryPerfRecord.end();
-                    if (!scroll.isSucceeded()) {
-                        throw DataXException.asDataXException(ESReaderErrorCode.ES_SEARCH_ERROR, String.format("scroll[id=%s] search error,code:%s,msg:%s", scrollId, scroll.getResponseCode(), scroll.getErrorMessage()));
+                    if (!sr.isSucceeded()) {
+                        throw DataXException.asDataXException(ESReaderErrorCode.ES_SEARCH_ERROR,
+                                String.format("scroll[id=%s] search error,code:%s,msg:%s", scrollId,
+                                        sr.getResponseCode(), sr.getErrorMessage()));
                     }
                     allResultPerfRecord.start();
-                    hasElement = this.transportRecords(recordSender, parseSearchResult(scroll));
+                    hasElement = this.transportRecords(recordSender, parseSearchResult(sr));
                     allResultPerfRecord.end();
                 }
             } catch (DataXException dxe) {
@@ -211,13 +218,15 @@ public class EsReader extends Reader {
             }
         }
 
-        private void getPathSource(List<Map<String, Object>> result, Map<String, Object> source, List<EsField> column, Map<String, Object> parent) {
+        private void getPathSource(List<Map<String, Object>> result, Map<String, Object> source, List<EsField> column,
+                Map<String, Object> parent) {
             if (source.isEmpty()) {
                 return;
             }
             for (EsField esField : column) {
                 if (!esField.hasChild()) {
-                    parent.put(esField.getFinalName(table.getNameCase()), source.getOrDefault(esField.getName(), esField.getValue()));
+                    parent.put(esField.getFinalName(table.getNameCase()),
+                            source.getOrDefault(esField.getName(), esField.getValue()));
                 }
             }
             for (EsField esField : column) {
@@ -282,7 +291,8 @@ public class EsReader extends Reader {
             if (sources == null) {
                 sources = Collections.emptyList();
             }
-//            log.info("search result: total={},maxScore={},hits={}", result.getTotal(), result.getMaxScore(), sources.size());
+            // log.info("search result: total={},maxScore={},hits={}", result.getTotal(),
+            // result.getMaxScore(), sources.size());
             List<Map<String, Object>> recordMaps = new ArrayList<>();
             for (String source : sources) {
                 List<EsField> column = table.getColumn();
@@ -299,7 +309,8 @@ public class EsReader extends Reader {
             return sources.size() > 0;
         }
 
-        private void transportOneRecord(EsTable table, RecordSender recordSender, List<Map<String, Object>> recordMaps) {
+        private void transportOneRecord(EsTable table, RecordSender recordSender,
+                List<Map<String, Object>> recordMaps) {
             for (Map<String, Object> o : recordMaps) {
                 boolean allow = filter(table.getFilter(), table.getDeleteFilterKey(), o);
                 if (allow && o.entrySet().stream().anyMatch(x -> x.getValue() != null)) {
@@ -359,7 +370,8 @@ public class EsReader extends Reader {
             } else if (value instanceof Array) {
                 col = new StringColumn(JSON.toJSONString(value));
             } else {
-                throw DataXException.asDataXException(ESReaderErrorCode.UNKNOWN_DATA_TYPE, "type:" + value.getClass().getName());
+                throw DataXException.asDataXException(ESReaderErrorCode.UNKNOWN_DATA_TYPE,
+                        "type:" + value.getClass().getName());
             }
             return col;
         }
@@ -371,7 +383,8 @@ public class EsReader extends Reader {
 
         @Override
         public void destroy() {
-            log.info("============elasticsearch reader taskGroup[{}] taskId[{}] destroy=================", super.getTaskGroupId(), super.getTaskId());
+            log.info("============elasticsearch reader taskGroup[{}] taskId[{}] destroy=================",
+                    super.getTaskGroupId(), super.getTaskId());
             esClient.closeJestClient();
         }
     }

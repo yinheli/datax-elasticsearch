@@ -41,12 +41,12 @@ public class ESClient {
     }
 
     public void createClient(String endpoint,
-                             String user,
-                             String passwd,
-                             boolean multiThread,
-                             int readTimeout,
-                             boolean compression,
-                             boolean discovery) {
+            String user,
+            String passwd,
+            boolean multiThread,
+            int readTimeout,
+            boolean compression,
+            boolean discovery) {
 
         JestClientFactory factory = new JestClientFactory();
         Builder httpClientConfig = new Builder(endpoint)
@@ -57,7 +57,8 @@ public class ESClient {
                 .maxTotalConnection(200)
                 .requestCompressionEnabled(compression)
                 .discoveryEnabled(discovery)
-                .discoveryFrequency(5L, TimeUnit.MINUTES);
+                .discoveryFrequency(5L, TimeUnit.MINUTES)
+                .gson(new Gson());
 
         if (!("".equals(user) || "".equals(passwd))) {
             httpClientConfig.defaultCredentials(user, passwd);
@@ -89,11 +90,11 @@ public class ESClient {
     }
 
     public SearchResult search(String query,
-                               SearchType searchType,
-                               String index,
-                               String type,
-                               String scroll,
-                               Map<String, Object> headers) throws IOException {
+            SearchType searchType,
+            String index,
+            String type,
+            String scroll,
+            Map<String, Object> headers) throws IOException {
         Search.Builder searchBuilder = new Search.Builder(query)
                 .setSearchType(searchType)
                 .addIndex(index).addType(type).setHeader(headers);
@@ -121,7 +122,7 @@ public class ESClient {
         JestResult rst = null;
         rst = jestClient.execute(clientRequest);
         if (!rst.isSucceeded()) {
-            //log.warn(rst.getErrorMessage());
+            // log.warn(rst.getErrorMessage());
         }
         return rst;
     }
@@ -138,7 +139,6 @@ public class ESClient {
         JsonObject jsonObject = rst.getJsonObject();
         return jsonObject.has("items");
     }
-
 
     public boolean alias(String indexname, String aliasname, boolean needClean) throws IOException {
         GetAliases getAliases = new GetAliases.Builder().addIndex(aliasname).build();
@@ -163,7 +163,8 @@ public class ESClient {
             }
         }
 
-        ModifyAliases modifyAliases = new ModifyAliases.Builder(addAliasMapping).addAlias(list).setParameter("master_timeout", "5m").build();
+        ModifyAliases modifyAliases = new ModifyAliases.Builder(addAliasMapping).addAlias(list)
+                .setParameter("master_timeout", "5m").build();
         rst = jestClient.execute(modifyAliases);
         if (!rst.isSucceeded()) {
             log.error(rst.getErrorMessage());
